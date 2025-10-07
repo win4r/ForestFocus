@@ -1,0 +1,37 @@
+# Xcode build artifacts and user-specific files
+DerivedData/
+build/
+
+# Xcode workspace and user data
+*.xcworkspace/
+xcuserdata/
+*.xcuserstate
+*.xcodeproj/xcuserdata/
+
+# Swift Package Manager
+.build/
+Package.resolved
+
+# CocoaPods
+Pods/
+Podfile.lock
+
+# Carthage
+Carthage/Build/
+
+# Fastlane
+fastlane/report.xml
+fastlane/Preview.html
+fastlane/screenshots/**/*.png
+fastlane/test_output/
+
+# Misc
+.DS_Store
+*.swp
+*.swo
+*.orig
+profile
+*.moved-aside
+*.ipa
+*.dSYM.zip
+*.dSYM
