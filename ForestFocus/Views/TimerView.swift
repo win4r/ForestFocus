@@ -12,6 +12,7 @@ struct TimerView: View {
     @State private var treeStage: Int = 1
     @State private var sessionState: SessionState = .idle
     @State private var cancellables = Set<AnyCancellable>()
+    @State private var selectedDuration: Int = 25 // Duration in minutes
 
     var body: some View {
         VStack(spacing: 40) {
@@ -20,6 +21,24 @@ struct TimerView: View {
             // Tree Animation
             TreeAnimationView(stage: treeStage)
                 .frame(height: 200)
+
+            // Duration Picker (only shown when idle)
+            if sessionState == .idle {
+                VStack(spacing: 8) {
+                    Text("Focus Duration")
+                        .font(.headline)
+                        .foregroundColor(.secondary)
+
+                    Picker("Duration", selection: $selectedDuration) {
+                        ForEach([10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60], id: \.self) { minutes in
+                            Text("\(minutes) min")
+                                .tag(minutes)
+                        }
+                    }
+                    .pickerStyle(.wheel)
+                    .frame(height: 120)
+                }
+            }
 
             // Countdown Timer
             CountdownTimerView(remainingSeconds: remainingTime)
@@ -100,8 +119,8 @@ struct TimerView: View {
     private var startButton: some View {
         Button {
             Task {
-                try? await timerService?.startSession()
-                NotificationService.shared.scheduleSessionComplete(in: 1500)
+                try? await timerService?.startSession(durationMinutes: selectedDuration)
+                NotificationService.shared.scheduleSessionComplete(in: selectedDuration * 60)
             }
         } label: {
             Text("Start Focus")
@@ -113,7 +132,7 @@ struct TimerView: View {
                 .cornerRadius(12)
         }
         .accessibilityLabel("Start focus session")
-        .accessibilityHint("Begins a 25-minute timer and plants a tree")
+        .accessibilityHint("Begins a \(selectedDuration)-minute timer and plants a tree")
     }
 
     private var pauseButton: some View {

@@ -8,6 +8,7 @@ final class FocusSession {
     var startDay: Date // Normalized to 00:00:00 of start date (for stats grouping)
     var endTime: Date? // nil if active/paused
     var elapsedSeconds: Int // Accumulated time (handles pause/resume)
+    var durationSeconds: Int // Total duration selected for this session
     var statusRawValue: String // Store as String for SwiftData compatibility
     var treeStage: Int // 1-5 (visual growth stage)
     var monotonicReference: TimeInterval // CFAbsoluteTimeGetCurrent() at session start
@@ -17,12 +18,13 @@ final class FocusSession {
         set { statusRawValue = newValue.rawValue }
     }
 
-    init(startTime: Date, startDay: Date, monotonicReference: TimeInterval) {
+    init(startTime: Date, startDay: Date, durationSeconds: Int, monotonicReference: TimeInterval) {
         self.id = UUID()
         self.startTime = startTime
         self.startDay = startDay
         self.endTime = nil
         self.elapsedSeconds = 0
+        self.durationSeconds = durationSeconds
         self.statusRawValue = SessionStatus.active.rawValue
         self.treeStage = 1
         self.monotonicReference = monotonicReference
