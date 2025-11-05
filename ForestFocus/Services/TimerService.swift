@@ -8,8 +8,9 @@ class TimerService: ObservableObject {
     private var timerCancellable: AnyCancellable?
     private var sessionStartMonotonic: TimeInterval?
     private var currentSession: FocusSession?
+    private var sessionDuration: Int = 1500 // Default 25 minutes, can be customized
 
-    @Published var remainingTime: Int = 1500 // 25 minutes
+    @Published var remainingTime: Int = 1500 // Default 25 minutes
     @Published var treeStage: Int = 1
     @Published var sessionState: SessionState = .idle
 
@@ -18,14 +19,14 @@ class TimerService: ObservableObject {
     }
 
     var elapsedSeconds: Int {
-        return 1500 - remainingTime
+        return sessionDuration - remainingTime
     }
 
     init(modelContext: ModelContext) {
         self.modelContext = modelContext
     }
 
-    func startSession() async throws {
+    func startSession(durationMinutes: Int = 25) async throws {
         guard sessionState == .idle else {
             throw TimerError.sessionAlreadyActive
         }
@@ -33,10 +34,12 @@ class TimerService: ObservableObject {
         let now = Date()
         let startDay = now.startOfDay()
         let monotonicRef = MonotonicClock.now()
+        let durationSecs = durationMinutes * 60
 
         let session = FocusSession(
             startTime: now,
             startDay: startDay,
+            durationSeconds: durationSecs,
             monotonicReference: monotonicRef
         )
 
@@ -45,8 +48,9 @@ class TimerService: ObservableObject {
 
         currentSession = session
         sessionStartMonotonic = monotonicRef
+        sessionDuration = durationSecs
         sessionState = .active
-        remainingTime = 1500
+        remainingTime = durationSecs
         treeStage = 1
 
         startTimer()
@@ -86,6 +90,7 @@ class TimerService: ObservableObject {
         }
 
         session.status = .active
+        sessionDuration = session.durationSeconds
         sessionStartMonotonic = MonotonicClock.now() - TimeInterval(session.elapsedSeconds)
         try modelContext.save()
 
@@ -113,6 +118,7 @@ class TimerService: ObservableObject {
         try modelContext.save()
 
         sessionState = .idle
+        sessionDuration = 1500
         remainingTime = 1500
         treeStage = 1
     }
@@ -127,9 +133,10 @@ class TimerService: ObservableObject {
 
         let now = MonotonicClock.now()
         let elapsed = Int(now - session.monotonicReference)
+        sessionDuration = session.durationSeconds
 
-        remainingTime = max(0, 1500 - elapsed)
-        treeStage = calculateTreeStage(elapsed: elapsed)
+        remainingTime = max(0, sessionDuration - elapsed)
+        treeStage = calculateTreeStage(elapsed: elapsed, duration: sessionDuration)
         session.elapsedSeconds = elapsed
 
         if remainingTime == 0 {
@@ -139,15 +146,19 @@ class TimerService: ObservableObject {
         }
     }
 
-    func calculateTreeStage(elapsed: Int) -> Int {
+    func calculateTreeStage(elapsed: Int, duration: Int) -> Int {
+        // Calculate stage proportionally based on duration
+        // Always divide into 5 equal stages
+        let stageInterval = duration / 5
+
         switch elapsed {
-        case 0..<300:
+        case 0..<stageInterval:
             return 1
-        case 300..<600:
+        case stageInterval..<(stageInterval * 2):
             return 2
-        case 600..<900:
+        case (stageInterval * 2)..<(stageInterval * 3):
             return 3
-        case 900..<1200:
+        case (stageInterval * 3)..<(stageInterval * 4):
             return 4
         default:
             return 5
@@ -173,8 +184,8 @@ class TimerService: ObservableObject {
         guard let startMonotonic = sessionStartMonotonic else { return }
 
         let elapsed = Int(MonotonicClock.now() - startMonotonic)
-        remainingTime = max(0, 1500 - elapsed)
-        treeStage = calculateTreeStage(elapsed: elapsed)
+        remainingTime = max(0, sessionDuration - elapsed)
+        treeStage = calculateTreeStage(elapsed: elapsed, duration: sessionDuration)
 
         // Update session in database
         let descriptor = FetchDescriptor<FocusSession>(
@@ -203,7 +214,7 @@ class TimerService: ObservableObject {
 
         session.status = .completed
         session.endTime = Date()
-        session.elapsedSeconds = 1500
+        session.elapsedSeconds = session.durationSeconds
         session.treeStage = 5
         try modelContext.save()
 
@@ -221,6 +232,7 @@ class TimerService: ObservableObject {
 
     func resetToIdle() {
         sessionState = .idle
+        sessionDuration = 1500
         remainingTime = 1500
         treeStage = 1
     }
